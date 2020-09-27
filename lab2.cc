@@ -22,7 +22,7 @@ void rgb_to_gray(const uint8_t* rgb, uint8_t* gray, int num_pixels)
 	auto duration = chrono::duration_cast<chrono::microseconds>(t2-t1).count();
 	cout << duration << " us" << endl;
 }
-void blending(Mat img1, Mat img2, double alpha){
+void blending_by_func(Mat img1, Mat img2, double alpha){
     Mat dst;
     double beta = ( 1.0 - alpha );
 
@@ -30,6 +30,30 @@ void blending(Mat img1, Mat img2, double alpha){
 
     imwrite( "Linear.png", dst );
 }
+
+void blending_simple(Mat img1, Mat img2, Mat dst){
+	int cn1 = img1.channels();
+	int cn2 = img2.channels();
+
+	uint8_t* pixelPtr1 = (uint8_t*)img1.data;
+	uint8_t* pixelPtr2 = (uint8_t*)img2.data;
+	Scalar_<uint8_t> bgrPixel;
+
+	for(int i = 0; i < img1.rows; i++){
+		for(int j = 0; j < img1.cols; j++){
+			Vec3b & c_img1 = img1.at<Vec3b>(i,j);
+			Vec3b & c_img2 = img2.at<Vec3b>(i,j);
+			Vec3b & c_dst = dst.at<Vec3b>(i,j);
+
+			c_dst.val[0] = c_img1.val[0] * 0.5 + c_img2[0] * 0.5;
+			c_dst.val[1] = c_img1.val[1] * 0.5 + c_img2[1] * 0.5;
+			c_dst.val[2] = c_img1.val[2] * 0.5 + c_img2[2] * 0.5;
+		}
+	}
+
+	imwrite("simp.png", dst);
+}
+
 void blending_neon(const uint8_t* img1, const uint8_t* img2, uint8_t* dst, int num_pixels){
 	num_pixels /= 8;
 
@@ -134,8 +158,8 @@ int main(int argc,char** argv)
 	//blending(img1, img2, alpha);
 
 	Mat dst(height, width, 16);
-	blending_neon(img_arr1, img_arr2, dst.data, num_pixels);
-
+	//blending_neon(img_arr1, img_arr2, dst.data, num_pixels);
+	blending_simple(img1, img2, dst);
 	//imshow("Neon blending", dst);
   //waitKey(0);
   imwrite("test.png", dst);
