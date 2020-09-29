@@ -10,12 +10,12 @@
 using namespace std;
 using namespace cv;
 
-void blending_by_func(Mat img1, Mat img2, double alpha, Mat dst){
-    double beta = ( 1.0 - alpha );
+void blending_by_func(Mat img1, Mat img2, float alpha, Mat dst){
+    float beta = ( 1.0 - alpha );
     addWeighted( img1, alpha, img2, beta, 0.0, dst);
 }
 
-void blending_simple(Mat img1, Mat img2, Mat dst){
+void blending_simple(Mat img1, Mat img2, Mat dst, float alpha){
 	int cn1 = img1.channels();
 	int cn2 = img2.channels();
 
@@ -29,37 +29,40 @@ void blending_simple(Mat img1, Mat img2, Mat dst){
 			Vec3b & c_img2 = img2.at<Vec3b>(i,j);
 			Vec3b & c_dst = dst.at<Vec3b>(i,j);
 
-			c_dst.val[0] = c_img1.val[0] * 0.5 + c_img2[0] * 0.5;
-			c_dst.val[1] = c_img1.val[1] * 0.5 + c_img2[1] * 0.5;
-			c_dst.val[2] = c_img1.val[2] * 0.5 + c_img2[2] * 0.5;
+			c_dst.val[0] = c_img1.val[0] * alpha + c_img2[0] * (1.0 - alpha);
+			c_dst.val[1] = c_img1.val[1] * alpha + c_img2[1] * (1.0 - alpha);
+			c_dst.val[2] = c_img1.val[2] * alpha + c_img2[2] * (1.0 - alpha);
 		}
 	}
 
 	imwrite("simp.png", dst);
 }
 
-void blending_neon(const uint8_t* img1, const uint8_t* img2, uint8_t* dst, int num_pixels){
+void blending_neon(const uint8_t* img1, const uint8_t* img2, uint8_t* dst, int num_pixels, float alpha){
 	num_pixels /= 8;
 
 	uint16x8_t temp;
 	uint8x8x3_t result;
+    float16x8_t v_alpha = vdupq_n_f16(alpha);
+
+    float16x8_t v_beta = vdupq_n_f16(1.0 - alpha);
 
 	for(int i =0; i<num_pixels; i++, img1+=8*3, img2+=8*3, dst+=8*3){
 		uint8x8x3_t img1_8 = vld3_u8(img1);
 		uint8x8x3_t img2_8 = vld3_u8(img2);
 
+        float16x8_t img1_f16_b = vreinterpretq_f16_u16((uint8x16_t)img1_8.val[0]);
 		img1_8.val[0] = vshr_n_u8(img1_8.val[0], 1);
 		img1_8.val[1] = vshr_n_u8(img1_8.val[1], 1);
 		img1_8.val[2] = vshr_n_u8(img1_8.val[2], 1);
-
+ 
 		img2_8.val[0] = vshr_n_u8(img2_8.val[0], 1);
-    img2_8.val[1] = vshr_n_u8(img2_8.val[1], 1);
+        img2_8.val[1] = vshr_n_u8(img2_8.val[1], 1);
 		img2_8.val[2] = vshr_n_u8(img2_8.val[2], 1);
 
 		result.val[0] = vadd_u8(img1_8.val[0], img2_8.val[0]);
 		result.val[1] = vadd_u8(img1_8.val[1], img2_8.val[1]);
 		result.val[2] = vadd_u8(img1_8.val[2], img2_8.val[2]);
-		//result = vshrn_n_u16(temp, 1);
 
 		vst3_u8(dst, result);
 	}
@@ -109,17 +112,17 @@ int main(int argc,char** argv)
 	int num_pixels = width*height;
 
 	Mat neon_dst(height, width, img1.type());
-  auto t1_neon = chrono::high_resolution_clock::now();
-	blending_neon(img_arr1, img_arr2, neon_dst.data, num_pixels);
-  auto t2_neon = chrono::high_resolution_clock::now();
-  auto duration_neon = chrono::duration_cast<chrono::microseconds>(t2_neon-t1_neon).count();
-  cout << "Neon duraion" << endl;
-  cout << duration_neon << endl;
-  imwrite("neon.png", neon_dst);
+//  auto t1_neon = chrono::high_resolution_clock::now();
+	//blending_neon(img_arr1, img_arr2, neon_dst.data, num_pixels);
+//  auto t2_neon = chrono::high_resolution_clock::now();
+ // auto duration_neon = chrono::duration_cast<chrono::microseconds>(t2_neon-t1_neon).count();
+  //cout << "Neon duraion" << endl;
+  //cout << duration_neon << endl;
+  //imwrite("neon.png", neon_dst);
 
 	Mat simple_dst(height, width, img1.type());
   auto t1_simp = chrono::high_resolution_clock::now();
-  blending_simple(img1, img2, simple_dst);
+  blending_simple(img1, img2, simple_dst, 0.3);
   auto t2_simp = chrono::high_resolution_clock::now();
   auto duration_simp = chrono::duration_cast<chrono::microseconds>(t2_simp-t1_simp).count();
   cout << "Simple duraion" << endl;
@@ -128,7 +131,7 @@ int main(int argc,char** argv)
 
 	Mat func_dst(height, width, img1.type());
   auto t1_func = chrono::high_resolution_clock::now();
-	blending_by_func(img1, img2, 0.5, func_dst);
+	blending_by_func(img1, img2, 0.3, func_dst);
   auto t2_func = chrono::high_resolution_clock::now();
   auto duration_func = chrono::duration_cast<chrono::microseconds>(t2_func-t1_func).count();
   cout << "addWeighted function duraion" << endl;
