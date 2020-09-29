@@ -109,16 +109,31 @@ int main(int argc,char** argv)
 	int num_pixels = width*height;
 
 	Mat neon_dst(height, width, img1.type());
+  auto t1_neon = chrono::high_resolution_clock::now();
 	blending_neon(img_arr1, img_arr2, neon_dst.data, num_pixels);
-	imwrite("neon.png", neon_dst);
+  auto t2_neon = chrono::high_resolution_clock::now();
+  auto duration_neon = chrono::duration_cast<chrono::microseconds>(t2_neon-t1_neon).count();
+  cout << "Neon duraion" << endl;
+  cout << duration_neon << endl;
+  imwrite("neon.png", neon_dst);
 
 	Mat simple_dst(height, width, img1.type());
-	blending_simple(img1, img2, simple_dst);
+  auto t1_simp = chrono::high_resolution_clock::now();
+  blending_simple(img1, img2, simple_dst);
+  auto t2_simp = chrono::high_resolution_clock::now();
+  auto duration_simp = chrono::duration_cast<chrono::microseconds>(t2_simp-t1_simp).count();
+  cout << "Simple duraion" << endl;
+  cout << duration_simp << endl;
 	imwrite("simp.png", simple_dst);
 
 	Mat func_dst(height, width, img1.type());
+  auto t1_func = chrono::high_resolution_clock::now();
 	blending_by_func(img1, img2, 0.5, func_dst);
-	imwrite("func.png", func_dst);
+  auto t2_func = chrono::high_resolution_clock::now();
+  auto duration_func = chrono::duration_cast<chrono::microseconds>(t2_func-t1_func).count();
+  cout << "addWeighted function duraion" << endl;
+  cout << duration_func << endl;
+  imwrite("func.png", func_dst);
 	/*
 	auto t1_neon = chrono::high_resolution_clock::now();
 	rgb_to_gray_neon(rgb_arr, gray_arr_neon, num_pixels);
