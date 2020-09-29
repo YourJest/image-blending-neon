@@ -10,25 +10,9 @@
 using namespace std;
 using namespace cv;
 
-void rgb_to_gray(const uint8_t* rgb, uint8_t* gray, int num_pixels)
-{
-	cout << "inside function rgb_to_gray" << endl;
-	auto t1 = chrono::high_resolution_clock::now();
-	for(int i=0; i<num_pixels; ++i, rgb+=3) {
-		int v = (77*rgb[0] + 150*rgb[1] + 29*rgb[2]);
-		gray[i] = v>>8;
-	}
-	auto t2 = chrono::high_resolution_clock::now();
-	auto duration = chrono::duration_cast<chrono::microseconds>(t2-t1).count();
-	cout << duration << " us" << endl;
-}
-void blending_by_func(Mat img1, Mat img2, double alpha){
-    Mat dst;
+void blending_by_func(Mat img1, Mat img2, double alpha, Mat dst){
     double beta = ( 1.0 - alpha );
-
     addWeighted( img1, alpha, img2, beta, 0.0, dst);
-
-    imwrite( "Linear.png", dst );
 }
 
 void blending_simple(Mat img1, Mat img2, Mat dst){
@@ -80,37 +64,6 @@ void blending_neon(const uint8_t* img1, const uint8_t* img2, uint8_t* dst, int n
 		vst3_u8(dst, result);
 	}
 }
-void rgb_to_gray_neon(const uint8_t* rgb, uint8_t* gray, int num_pixels) {
-	// We'll use 64-bit NEON registers to process 8 pixels in parallel.
-	num_pixels /= 8;
-	// Duplicate the weight 8 times.
-	uint8x8_t w_r = vdup_n_u8(77);
-	uint8x8_t w_g = vdup_n_u8(150);
-	uint8x8_t w_b = vdup_n_u8(29);
-	// For intermediate results. 16-bit/pixel to avoid overflow.
-	uint16x8_t temp;
-	// For the converted grayscale values.
-	uint8x8_t result;
-	auto t1_neon = chrono::high_resolution_clock::now();
-	for(int i=0; i<num_pixels; ++i, rgb+=8*3, gray+=8) {
-	    // Load 8 pixels into 3 64-bit registers, split by channel.
-	    uint8x8x3_t src = vld3_u8(rgb);
-	    // Multiply all eight red pixels by the corresponding weights.
-	    temp = vmull_u8(src.val[0], w_r);
-	    // Combined multiply and addition.
-	    temp = vmlal_u8(temp, src.val[1], w_g);
-	    temp = vmlal_u8(temp, src.val[2], w_b);
-	    // Shift right by 8, "narrow" to 8-bits (recall temp is 16-bit).
-	    result = vshrn_n_u16(temp, 8);
-	    // Store converted pixels in the output grayscale image.
-	    vst1_u8(gray, result);
-	}
-
-	auto t2_neon = chrono::high_resolution_clock::now();
-	auto duration_neon = chrono::duration_cast<chrono::microseconds>(t2_neon-t1_neon).count();
-	cout << "inside function rgb_to_gray_neon" << endl;
-	cout << duration_neon << " us" << endl;
-}
 
 int main(int argc,char** argv)
 {
@@ -155,22 +108,18 @@ int main(int argc,char** argv)
 	int height = img1.rows;
 	int num_pixels = width*height;
 
-	//blending(img1, img2, alpha);
+	Mat neon_dst(height, width, img1.type());
+	blending_neon(img_arr1, img_arr2, neon_dst.data, num_pixels);
+	imwrite("neon.png", neon_dst);
 
-	Mat dst(height, width, 16);
-	//blending_neon(img_arr1, img_arr2, dst.data, num_pixels);
-	blending_simple(img1, img2, dst);
-	//imshow("Neon blending", dst);
-  //waitKey(0);
-  imwrite("test.png", dst);
+	Mat simple_dst(height, width, img1.type());
+	blending_simple(img1, img2, simple_dst);
+	imwrite("simp.png", simple_dst);
 
-	/*int width = rgb_image.cols;
-	int height = rgb_image.rows;
-	int num_pixels = width*height;
-	Mat gray_image_neon(height, width, CV_8UC1, Scalar(0));
-	gray_arr_neon = gray_image_neon.data;
-
-
+	Mat func_dst(height, width, img1.type());
+	blending_by_func(img1, img2, 0.5, func_dst);
+	imwrite("func.png", func_dst);
+	/*
 	auto t1_neon = chrono::high_resolution_clock::now();
 	rgb_to_gray_neon(rgb_arr, gray_arr_neon, num_pixels);
 	auto t2_neon = chrono::high_resolution_clock::now();
@@ -179,6 +128,6 @@ int main(int argc,char** argv)
 	cout << duration_neon << " us" << endl;
 
 	imwrite("gray_neon.png", gray_image_neon);
-    */
+  */
     return 0;
 }
