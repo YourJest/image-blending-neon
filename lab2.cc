@@ -38,70 +38,72 @@ void blending_simple(Mat img1, Mat img2, Mat dst, float alpha){
 	imwrite("simp.png", dst);
 }
 
-// void blending_neon(const uint8_t* img1, const uint8_t* img2, uint8_t* dst, int num_pixels, float alpha){
-// 	num_pixels /= 8;
-//
-// 	uint16x8_t temp;
-// 	uint8x8x3_t result;
-//   float16x8_t v_alpha = vdupq_n_f16(alpha);
-//
-//   float16x8_t v_beta = vdupq_n_f16(1.0 - alpha);
-//
-//   float16x8_t img1_f16_b, img1_f16_g, img1_f16_r;
-//   float16x8_t img2_f16_b, img2_f16_g, img2_f16_r;
-//   float16x8_t res_b, res_g, res_r;
-//
-// 	for(int i =0; i<num_pixels; i++, img1+=8*3, img2+=8*3, dst+=8*3){
-// 		uint8x8x3_t img1_8 = vld3_u8(img1);
-// 		uint8x8x3_t img2_8 = vld3_u8(img2);
-//
-//     //converting pixel values to float
-//     uint16x8_t img1_u16_b = vmovl_u8(img1_8.val[0]);
-//     uint16x8_t img1_u16_g = vmovl_u8(img1_8.val[1]);
-//     uint16x8_t img1_u16_r = vmovl_u8(img1_8.val[2]);
-//
-//     img1_f16_b = vreinterpretq_f16_u16(img1_u16_b);
-//     img1_f16_g = vreinterpretq_f16_u16(img1_u16_g);
-//     img1_f16_r = vreinterpretq_f16_u16(img1_u16_r);
-//
-//
-//     uint16x8_t img2_u16_b = vmovl_u8(img2_8.val[0]);
-//     uint16x8_t img2_u16_g = vmovl_u8(img2_8.val[1]);
-//     uint16x8_t img2_u16_r = vmovl_u8(img2_8.val[2]);
-//
-//     img2_f16_b = vreinterpretq_f16_u16(img2_u16_b);
-//     img2_f16_g = vreinterpretq_f16_u16(img2_u16_g);
-//     img2_f16_r = vreinterpretq_f16_u16(img2_u16_r);
-//
-//     //calculating blending weights
-//     img1_f16_b = vdivq_f16(img1_f16_b, v_alpha);
-//     img1_f16_g = vdivq_f16(img1_f16_g, v_alpha);
-//     img1_f16_r = vdivq_f16(img1_f16_r, v_alpha);
-//
-//     img2_f16_b = vdivq_f16(img2_f16_b, v_beta);
-//     img2_f16_g = vdivq_f16(img2_f16_g, v_beta);
-//     img2_f16_r = vdivq_f16(img2_f16_r, v_beta);
-//
-//     // img1_8.val[0] = vshr_n_u8(img1_8.val[0], 1);
-// 		// img1_8.val[1] = vshr_n_u8(img1_8.val[1], 1);
-// 		// img1_8.val[2] = vshr_n_u8(img1_8.val[2], 1);
-//     //
-// 		// img2_8.val[0] = vshr_n_u8(img2_8.val[0], 1);
-//     //     img2_8.val[1] = vshr_n_u8(img2_8.val[1], 1);
-// 		// img2_8.val[2] = vshr_n_u8(img2_8.val[2], 1);
-//
-//     //add, reinterpret values back to uint8, write to destination image
-//     res_b = vaddq_f16(img1_f16_b, img2_f16_b);
-//     res_g = vaddq_f16(img1_f16_g, img2_f16_g);
-//     res_r = vaddq_f16(img1_f16_r, img2_f16_r);
-//
-//     // result.val[0] = vreinterpret_u8_f16(res_b);
-// 		// result.val[1] = vreinterpret_u8_f16(res_g);
-// 		// result.val[2] = vreinterpret_u8_f16(res_r);
-//     //
-// 		// vst3_u8(dst, result);
-// 	}
-// }
+void blending_neon(const uint8_t* img1, const uint8_t* img2, uint8_t* dst, int num_pixels, float alpha){
+	num_pixels /= 8;
+
+	uint16x8_t temp;
+	uint8x8x3_t result;
+  float16x8_t v_alpha = vdupq_n_f16(alpha);
+
+  float16x8_t v_beta = vdupq_n_f16(1.0 - alpha);
+
+  float16x8_t img1_f16_b, img1_f16_g, img1_f16_r;
+  float16x8_t img2_f16_b, img2_f16_g, img2_f16_r;
+  float16x8_t res_b, res_g, res_r;
+
+	for(int i =0; i<num_pixels; i++, img1+=8*3, img2+=8*3, dst+=8*3){
+		uint8x8x3_t img1_8 = vld3_u8(img1);
+		uint8x8x3_t img2_8 = vld3_u8(img2);
+
+    //converting pixel values to float
+    uint16x8_t img1_u16_b = vmovl_u8(img1_8.val[0]);
+    uint16x8_t img1_u16_g = vmovl_u8(img1_8.val[1]);
+    uint16x8_t img1_u16_r = vmovl_u8(img1_8.val[2]);
+
+    img1_f16_b = vreinterpretq_f16_u16(img1_u16_b);
+    img1_f16_g = vreinterpretq_f16_u16(img1_u16_g);
+    img1_f16_r = vreinterpretq_f16_u16(img1_u16_r);
+
+
+    uint16x8_t img2_u16_b = vmovl_u8(img2_8.val[0]);
+    uint16x8_t img2_u16_g = vmovl_u8(img2_8.val[1]);
+    uint16x8_t img2_u16_r = vmovl_u8(img2_8.val[2]);
+
+    img2_f16_b = vreinterpretq_f16_u16(img2_u16_b);
+    img2_f16_g = vreinterpretq_f16_u16(img2_u16_g);
+    img2_f16_r = vreinterpretq_f16_u16(img2_u16_r);
+
+    //calculating blending weights
+    img1_f16_b = vdivq_f16(img1_f16_b, v_alpha);
+    img1_f16_g = vdivq_f16(img1_f16_g, v_alpha);
+    img1_f16_r = vdivq_f16(img1_f16_r, v_alpha);
+
+    img2_f16_b = vdivq_f16(img2_f16_b, v_beta);
+    img2_f16_g = vdivq_f16(img2_f16_g, v_beta);
+    img2_f16_r = vdivq_f16(img2_f16_r, v_beta);
+
+    // img1_8.val[0] = vshr_n_u8(img1_8.val[0], 1);
+		// img1_8.val[1] = vshr_n_u8(img1_8.val[1], 1);
+		// img1_8.val[2] = vshr_n_u8(img1_8.val[2], 1);
+    //
+		// img2_8.val[0] = vshr_n_u8(img2_8.val[0], 1);
+    //     img2_8.val[1] = vshr_n_u8(img2_8.val[1], 1);
+		// img2_8.val[2] = vshr_n_u8(img2_8.val[2], 1);
+
+    //add, reinterpret values back to uint8, write to destination image
+    res_b = vaddq_f16(img1_f16_b, img2_f16_b);
+    res_g = vaddq_f16(img1_f16_g, img2_f16_g);
+    res_r = vaddq_f16(img1_f16_r, img2_f16_r);
+
+    //TODO vmov to u8
+
+    result.val[0] = vreinterpret_u8_f16(res_b);
+		result.val[1] = vreinterpret_u8_f16(res_g);
+		result.val[2] = vreinterpret_u8_f16(res_r);
+
+		vst3_u8(dst, result);
+	}
+}
 
 int main(int argc,char** argv)
 {
