@@ -11,18 +11,16 @@ using namespace std;
 using namespace cv;
 
 void blending_by_func(Mat img1, Mat img2, float alpha, Mat dst){
-    float beta = ( 1.0 - alpha );
-    addWeighted( img1, alpha, img2, beta, 0.0, dst);
+    //https://docs.opencv.org/3.4/d5/dc4/tutorial_adding_images.html
+
+    addWeighted( img1, alpha, img2, 1.0 - alpha, 0.0, dst);
 }
 
 void blending_simple(Mat img1, Mat img2, Mat dst, float alpha){
-  int cn1 = img1.channels();
-  int cn2 = img2.channels();
 
-  uint8_t* pixelPtr1 = (uint8_t*)img1.data;
-  uint8_t* pixelPtr2 = (uint8_t*)img2.data;
   Scalar_<uint8_t> bgrPixel;
 
+  //Just taking every value and calculating it;
   for(int i = 0; i < img1.rows; i++){
     for(int j = 0; j < img1.cols; j++){
       Vec3b & c_img1 = img1.at<Vec3b>(i,j);
@@ -37,10 +35,11 @@ void blending_simple(Mat img1, Mat img2, Mat dst, float alpha){
 }
 
 void blending_neon(const uint8_t* img1, const uint8_t* img2, uint8_t* dst, int num_pixels, float alpha){
-  num_pixels /= 8;
+  num_pixels /= 8; //Format of the images should be 8-bits per pixel;
 
   uint8x8x3_t result;
   bool first = true;
+  //We're loading triplets of data, so we're working with 24(8*3) values per iteration
   for(int i =0; i<num_pixels; i++, img1+=8*3, img2+=8*3, dst+=8*3){
     uint8x8x3_t img1_u8 = vld3_u8(img1);
     uint8x8x3_t img2_u8 = vld3_u8(img2);
@@ -58,11 +57,13 @@ void blending_neon(const uint8_t* img1, const uint8_t* img2, uint8_t* dst, int n
       cout << endl;
     }*/
     for(int j = 0; j < 3; j++){
+      //Because ARM does not have integer division(or multiplying int by float), we should convert it to float
       uint16x8_t img1_u16 = vmovl_u8(img1_u8.val[j]);
       uint16x8_t img2_u16 = vmovl_u8(img2_u8.val[j]);
 
       uint32x4_t img1_u32l, img1_u32h, img2_u32l, img2_u32h;
       float32x4_t img1_f32l, img1_f32h, img2_f32l, img2_f32h;
+      //We're loading 8 values per iteration, so we need to divide int by 2 parts
       img1_u32l = vmovl_u16(vget_low_u16(img1_u16));
       img1_u32h = vmovl_u16(vget_high_u16(img1_u16));
       img1_f32l = vcvtq_f32_u32(img1_u32l);
@@ -73,6 +74,7 @@ void blending_neon(const uint8_t* img1, const uint8_t* img2, uint8_t* dst, int n
       img2_f32l = vcvtq_f32_u32(img2_u32l);
       img2_f32h = vcvtq_f32_u32(img2_u32h);
 
+      //Image blending formula is alpha*src1 + beta*src2; beta = 1.0 - alpha
       img1_f32h = vmulq_n_f32(img1_f32h, alpha);
       img1_f32l = vmulq_n_f32(img1_f32l, alpha);
       img2_f32h = vmulq_n_f32(img2_f32h, 1.0 - alpha);
@@ -96,9 +98,11 @@ void blending_neon(const uint8_t* img1, const uint8_t* img2, uint8_t* dst, int n
         cout << endl;
       }*/
 
+      //Converting result back to uint8x8
       uint32x4_t res_u32h = vcvtq_u32_f32(res_f32h);
       uint32x4_t res_u32l = vcvtq_u32_f32(res_f32l);
 
+      //Lower values must go first! I don't know why, but I'm sure this how vmovn_high works
       uint16x8_t res = vmovn_high_u32(vget_low_u16(res), res_u32l);
       res = vmovn_high_u32(vget_high_u16(res), res_u32h);
       result.val[j] = vmovn_u16(res);
@@ -118,6 +122,8 @@ void blending_neon(const uint8_t* img1, const uint8_t* img2, uint8_t* dst, int n
       cout << endl;
     }
     */
+
+    //Writing values to destination image
     vst3_u8(dst, result);
   }
 }
@@ -158,6 +164,10 @@ int main(int argc,char** argv)
       return -2;
   }
   float alpha = stof(argv[3]);
+  if(alpha < 0.0 || alpha > 1.0){
+    std::cout << "Alpha should be from 0.0 to 1.0" << '\n';
+    return -3;
+  }
   int width = img1.cols;
   int height = img1.rows;
   int num_pixels = width*height;
