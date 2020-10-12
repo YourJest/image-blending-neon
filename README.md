@@ -1,7 +1,9 @@
 # image-blending-neon
 
-Image blending using Arm NEON registers. Probably it should work faster than processing single pixels.
+Image adding(blending) using Arm NEON registers. Probably it should work faster than processing single pixels.
 
-Alpha & Beta has constant 0.5 value because program uses shifting bits instead of dividing. Probably some day it will be changed.
+Program uses OpenCV, so make sure it's installed. Compiling is very hard: ```make```. Check makefile for details;
 
-Tested on arm64 Debian 10 istalled with Debootstraper. Check "Use Qemu user mode" paragraph for details https://wiki.debian.org/Arm64Qemu.
+Usage: ```./lab2 image_name1 image_name2 alpha```
+
+I was working on arm64 Ubuntu(or Debian, I'm not sure) emulator istalled with Debootstraper. Check "Use Qemu user mode" paragraph for details https://wiki.debian.org/Arm64Qemu. Also tested on Jetson Nano.
