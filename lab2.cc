@@ -35,14 +35,14 @@ void blending_simple(Mat img1, Mat img2, Mat dst, float alpha){
 }
 
 void blending_neon(const uint8_t* img1, const uint8_t* img2, uint8_t* dst, int num_pixels, float alpha){
-  num_pixels /= 8; //Format of the images should be 8-bits per pixel;
+  num_pixels /= 8.0f/3.0f; //Format of the images should be 8-bits per pixel;
 
-  uint8x8x3_t result;
+  uint8x8_t result;
   bool first = true;
   //We're loading triplets of data, so we're working with 24(8*3) values per iteration
-  for(int i =0; i<num_pixels; i++, img1+=8*3, img2+=8*3, dst+=8*3){
-    uint8x8x3_t img1_u8 = vld3_u8(img1);
-    uint8x8x3_t img2_u8 = vld3_u8(img2);
+  for(int i =0; i<num_pixels; i++, img1+=8, img2+=8, dst+=8){
+    uint8x8_t img1_u8 = vld1_u8(img1);
+    uint8x8_t img2_u8 = vld1_u8(img2);
     /*Debug print of loaded value
     if(first){
       cout << "orig_image first values: "<< endl;
@@ -56,10 +56,10 @@ void blending_neon(const uint8_t* img1, const uint8_t* img2, uint8_t* dst, int n
       }
       cout << endl;
     }*/
-    for(int j = 0; j < 3; j++){
+    //for(int j = 0; j < 3; j++){
       //Because ARM does not have integer division(or multiplying int by float), we should convert it to float
-      uint16x8_t img1_u16 = vmovl_u8(img1_u8.val[j]);
-      uint16x8_t img2_u16 = vmovl_u8(img2_u8.val[j]);
+      uint16x8_t img1_u16 = vmovl_u8(img1_u8);
+      uint16x8_t img2_u16 = vmovl_u8(img2_u8);
 
       uint32x4_t img1_u32l, img1_u32h, img2_u32l, img2_u32h;
       float32x4_t img1_f32l, img1_f32h, img2_f32l, img2_f32h;
@@ -105,8 +105,8 @@ void blending_neon(const uint8_t* img1, const uint8_t* img2, uint8_t* dst, int n
       //Lower values must go first! I don't know why, but I'm sure this how vmovn_high works
       uint16x8_t res = vmovn_high_u32(vget_low_u16(res), res_u32l);
       res = vmovn_high_u32(vget_high_u16(res), res_u32h);
-      result.val[j] = vmovn_u16(res);
-    }
+      result = vmovn_u16(res);
+    //}
     /*Result debugging
     if(first){
       first = false;
@@ -124,7 +124,7 @@ void blending_neon(const uint8_t* img1, const uint8_t* img2, uint8_t* dst, int n
     */
 
     //Writing values to destination image
-    vst3_u8(dst, result);
+    vst1_u8(dst, result);
   }
 }
 
@@ -181,8 +181,8 @@ int main(int argc,char** argv)
   cout << duration_neon << endl;
   imwrite("neon_1.png", neon_dst);
 
-  /* Testing Uint8 to float convertion
-  uint8x8_t test_u8 = vld1_u8(img1_arr);
+  //Testing Uint8 to float convertion
+  /*uint8x8_t test_u8 = vld1_u8(img1_arr);
   uint8_t data_u8[8];
   vst1_u8(data_u8, test_u8);
   for(int i = 0; i < 8; i++){
@@ -208,7 +208,7 @@ int main(int argc,char** argv)
 
   i32vl = vcvtq_u32_f32(f32vl);
   i32vh = vcvtq_u32_f32(f32vh);
-
+  
   uint16x8_t u16v = vmovn_high_u32(vget_low_u16(u16v), i32vl);
   u16v = vmovn_high_u32(vget_high_u16(u16v), i32vh);
   uint8x8_t u8v = vmovn_u16(u16v);
@@ -217,7 +217,8 @@ int main(int argc,char** argv)
   for(int i = 0; i < 8; i++){
     cout << to_string(data[i]) << " ";
   }
-  cout << endl; */
+  cout << endl; 
+  */
   Mat simple_dst(height, width, img1.type());
   auto t1_simp = chrono::high_resolution_clock::now();
   blending_simple(img1, img2, simple_dst, alpha);
